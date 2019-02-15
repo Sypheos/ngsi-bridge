@@ -1,5 +1,3 @@
-// Copyright © 2018 The Things Industries B.V.
-
 package bridges
 
 import (
