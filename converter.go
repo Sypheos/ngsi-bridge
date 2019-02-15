@@ -9,7 +9,7 @@ import (
 	"ngsi-bridge/ngsi"
 )
 
-func decode(msg map[string]interface{}, sch Schema) (*ngsi.Entity, error) {
+func decode(msg map[string]interface{}, sch *Schema) (*ngsi.Entity, error) {
 	var err error
 	if field := sch.Data.Field; field != "" {
 		if msg, err = dataField(msg, field); err != nil {

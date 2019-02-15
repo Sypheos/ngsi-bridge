@@ -18,7 +18,7 @@ type HTTPBridge struct {
 	ctx       log.Interface
 	port      int
 	engine    *gin.Engine
-	mapper    map[string]Schema
+	mapper    map[string]*Schema
 	brokerURL string
 	method    string
 }
@@ -41,7 +41,7 @@ func NewHttpBridge(port int) *HTTPBridge {
 }
 
 // Prepare the HTTP server. This a non blocking call
-func (h *HTTPBridge) Prepare(ctx log.Interface, mapper map[string]Schema, brokerURL, method string) (err error) {
+func (h *HTTPBridge) Prepare(ctx log.Interface, mapper map[string]*Schema, brokerURL, method string) (err error) {
 	h.ctx = ctx.WithField("endpoint", "HTTP")
 	h.ctx.Info("Building bridge...")
 	h.mapper = mapper
