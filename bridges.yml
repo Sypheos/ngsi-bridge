@@ -1,0 +1,23 @@
+default:
+  attrs:
+    temp: celsius
+    level: liters
+    valve: bool
+  release: valve
+
+particle:
+  replace:
+    id: coreid
+    release: actuatorstatus
+    waterlevel: distance
+  attrs:
+    temp1: celcius
+    temp2: celcius
+    precipitation: L.mm
+    windspeed: m.s
+    waterlevel: meter
+    stateOfCharge: percentage
+    release: bool
+  data:
+    field: data
+    format: json
