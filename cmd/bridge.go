@@ -56,12 +56,12 @@ func main() {
 	return
 }
 
-func getMapperSchema(filename string) (map[string]bridges.Schema, error) {
+func getMapperSchema(filename string) (map[string]*bridges.Schema, error) {
 	buff, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return nil, err
 	}
-	m := map[string]bridges.Schema{}
+	m := map[string]*bridges.Schema{}
 	err = yaml.Unmarshal(buff, &m)
 	if err != nil {
 		return nil, err
