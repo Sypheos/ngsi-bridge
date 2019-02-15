@@ -1,7 +1,10 @@
 package bridges
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"net/http"
 	"ngsi-bridge/ngsi"
 
@@ -108,4 +111,47 @@ func retrieveEntity(context *gin.Context) (*ngsi.Entity, error) {
 
 func (h *HTTPBridge) Schemas(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, h.mapper)
+}
+
+func (h *HTTPBridge) decode(ctx *gin.Context) {
+	ctx.Status(http.StatusBadRequest)
+
+	buff, err := ioutil.ReadAll(ctx.Request.Body)
+	buff = bytes.Replace(buff, []byte{'\\', '"'}, []byte{'"'}, -1)
+	buff = bytes.Replace(buff, []byte("data="), []byte(""), 1)
+	msg := make(map[string]interface{})
+	err = json.Unmarshal(buff, &msg)
+	if err != nil {
+		ctx.Error(err).SetType(gin.ErrorTypePrivate)
+		ctx.Error(fmt.Errorf("field msg format can not be parsed to a map[string]interface")).SetType(gin.ErrorTypePublic)
+		ctx.Abort()
+		return
+	}
+
+	key := ctx.Param("key")
+	if key == "" {
+		keyI, ok := ctx.Get("key")
+		if !ok {
+			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("no schema found for %s", key)).SetType(gin.ErrorTypePublic)
+			return
+		}
+		key = keyI.(string)
+	}
+	sch, ok := h.mapper[key]
+	if !ok {
+		ctx.Error(fmt.Errorf("no schema found for %s", key)).SetType(gin.ErrorTypePublic)
+		ctx.Abort()
+		return
+	}
+
+	ent, err := decode(msg, sch)
+	if err != nil {
+		ctx.Error(err).SetType(gin.ErrorTypePublic)
+		ctx.Abort()
+	}
+	ctx.Set("element", ent)
+}
+
+func (h *HTTPBridge) Encode(ctx *gin.Context) {
+	ctx.AbortWithStatus(http.StatusNotImplemented)
 }

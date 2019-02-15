@@ -1,64 +1,26 @@
 package bridges
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/gin-gonic/gin"
 	"ngsi-bridge/ngsi"
 )
 
-func (h *HTTPBridge) decode(ctx *gin.Context) {
-	ctx.Status(http.StatusBadRequest)
-
-	buff, err := ioutil.ReadAll(ctx.Request.Body)
-	buff = bytes.Replace(buff, []byte{'\\', '"'}, []byte{'"'}, -1)
-	buff = bytes.Replace(buff, []byte("data="), []byte(""), 1)
-	msg := make(map[string]interface{})
-	err = json.Unmarshal(buff, &msg)
-	if err != nil {
-		ctx.Error(err).SetType(gin.ErrorTypePrivate)
-		ctx.Error(fmt.Errorf("field msg format can not be parsed to a map[string]interface")).SetType(gin.ErrorTypePublic)
-		ctx.Abort()
-		return
-	}
-
-	key := ctx.Param("key")
-	if key == "" {
-		keyI, ok := ctx.Get("key")
-		if !ok {
-			ctx.AbortWithError(http.StatusBadRequest, fmt.Errorf("no schema found for %s", key)).SetType(gin.ErrorTypePublic)
-			return
-		}
-		key = keyI.(string)
-	}
-
-	sch, ok := h.mapper[key]
-	if !ok {
-		ctx.Error(fmt.Errorf("no schema found for %s", key)).SetType(gin.ErrorTypePublic)
-		ctx.Abort()
-		return
-	}
-
+func decode(msg map[string]interface{}, sch Schema) (*ngsi.Entity, error) {
+	var err error
 	if field := sch.Data.Field; field != "" {
 		if msg, err = dataField(msg, field); err != nil {
-			ctx.Error(err).SetType(gin.ErrorTypePublic)
-			ctx.Abort()
-			return
+			return nil, err
 		}
 	}
 	msg = replaceField(msg, sch.Replace)
 
 	id, err := findID(msg)
 	if err != nil {
-		ctx.Error(err).SetType(gin.ErrorTypePublic)
-		ctx.Abort()
-		return
+		return nil, err
 	}
 
 	attrs := make(map[string]ngsi.Attribute)
@@ -70,8 +32,6 @@ func (h *HTTPBridge) decode(ctx *gin.Context) {
 					Type:  t,
 				},
 			}
-		} else {
-			h.ctx.Warnf("no type for %s", k)
 		}
 	}
 	attrs["timestamp"] = ngsi.Attribute{
@@ -80,15 +40,11 @@ func (h *HTTPBridge) decode(ctx *gin.Context) {
 			Value: time.Now().UTC(),
 		},
 	}
-	ctx.Set("element", ngsi.Entity{
+	return &ngsi.Entity{
 		Type:       "WaterTank",
 		Id:         id,
 		Attributes: attrs,
-	})
-}
-
-func (h *HTTPBridge) Encode(ctx *gin.Context) {
-	ctx.AbortWithStatus(http.StatusNotImplemented)
+	}, nil
 }
 
 func findID(msg map[string]interface{}) (string, error) {
